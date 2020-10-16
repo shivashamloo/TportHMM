@@ -1,64 +1,39 @@
 import os,subprocess
 import shutil
+from Bio import SeqIO
 
 class DATABASE:
 
-    def __init__(self, testset, dataset,folder):
+    def __init__(self, trainset, testset, dataset,folder):
+        self.trainset=trainset
         self.testset = testset
         self.dataset = dataset
         self.folder = folder
 
-    def removedup(self):
-        small_content = []
-        larget_content = {}
-        with open(self.testset, "r") as smallFile:
-            oneline = smallFile.readline()
-            temp = []
-            while oneline:
-                if not oneline.strip("\n").strip():
-                    oneline = smallFile.readline()
-                    continue
-                if oneline.startswith(">"):
-                    if temp:
-                        small_content.append("".join(temp))
-                        temp = []
-                else:
-                    temp.append(oneline.strip('\n'))
-                oneline = smallFile.readline()
-        small_content.append("".join(temp))
-        with open(self.dataset, "r") as largeFile:
-            oneline = largeFile.readline()
-            temp = []
-            entire = []
-            while oneline:
-                if not oneline.strip("\n").strip():
-                    oneline = largeFile.readline()
-                    continue
-                if oneline.startswith(">"):
-                    if entire:
-                        larget_content.update({"".join(temp): "".join(entire)})
-                        temp = []
-                        entire = []
-                else:
-                    temp.append(oneline.strip("\n"))
-                entire.append(oneline)
-                oneline = largeFile.readline()
-        larget_content.update({"".join(temp): "".join(entire)})
+    def clean(self):
+        data_set={}
+        train_test = {}
 
-        # print("Before removing, the number of larger dataset is "+ str(len(larget_content)))
+        for seq_record in SeqIO.parse(self.dataset, 'fasta'):
+            data_set[seq_record.id]=seq_record.seq
 
-        for each in small_content:
-            if each in larget_content:
-                del larget_content[each]
+        for seq_record in SeqIO.parse(self.trainset, 'fasta'):
+            train_test[seq_record.id]=seq_record.seq
+        for seq_record in SeqIO.parse(self.testset, 'fasta'):
+            train_test[seq_record.id]=seq_record.seq
 
-        # print("After removing duplicate records, the number of larger dataset is " + str(len(larget_content)))
-        clean_dataset = self.folder+"database/blast_database"
-        if os.path.exists(self.folder+"database/"):
-            shutil.rmtree(self.folder+'database/')
-        os.makedirs(self.folder+"database/")
+        for i in data_set:
+            if i in train_test:
+                del data_set[i]
+
+        clean_dataset = self.folder + "database/blast_database"
+        if os.path.exists(self.folder + "database/"):
+            shutil.rmtree(self.folder + 'database/')
+        os.makedirs(self.folder + "database/")
         with open(clean_dataset, "w") as result:
-            result.writelines(larget_content.values())
-
+            for i in data_set.keys():
+                result.write('>'+i+'\n')
+                result.write(str(data_set[i]))
         return clean_dataset
 
     def makedb(self, input):
@@ -66,7 +41,7 @@ class DATABASE:
         subprocess.call(["singularity", "exec", "-H", "/speed-scratch/shiva/",'/speed-scratch/bioinformatics-group/bioinformatics-singularity.simg',"makeblastdb","-in",input,"-title",make_db_output,"-dbtype","prot"])
 
     def compute(self):
-        output = self.removedup()
+        output=self.clean()
         self.makedb(output)
         os.remove(output)
 

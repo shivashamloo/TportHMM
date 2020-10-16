@@ -7,7 +7,6 @@ from hmm import HMM
 from latex import ReadResult
 import os
 import shutil
-from pre_reg import prereg
 
 class FinalPipeline:
 
@@ -32,7 +31,7 @@ class FinalPipeline:
         training_set.divide()
         testing_set = DIVISION(self.test, "test",folder)
         testing_set.divide()
-        database = DATABASE(self.test, self.database,folder)
+        database = DATABASE(self.train,self.test, self.database,folder)
         database.compute()
         blastrun = BlastRun(folder)
         msa_input = blastrun.compute()
